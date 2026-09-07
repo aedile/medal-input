@@ -67,6 +67,12 @@ typedef struct {
     uint32_t mute_hold_us;            /* 0 disables the gesture entirely */
     uint32_t coin_us, gap_us, start_us;  /* 0 -> 100000 / 400000 / 100000 */
 
+    /* Set when PWR means something else in this game. The rail and the power-off hold are still
+     * handled here; coin and start are not reported, and the game reads pwr_released and
+     * pwr_release_held_us to decide for itself. Pole Position needs this: its PWR has three
+     * bands - a tap is a coin, a medium press changes gear, a long one powers off. */
+    bool     manual_pwr;
+
     void (*on_mute)(void);            /* BOOT held for mute_hold_us */
     void (*on_recentre)(void);        /* the neutral pose was just (re)captured; clear latched
                                        * per-game state - accumulated counts, a sticky axis, a
@@ -86,10 +92,17 @@ typedef struct {
     int64_t pwr_held_us;
     bool    boot_released;            /* BOOT came up on this poll */
     int64_t boot_release_held_us;     /* and this is how long it had been down */
+    bool    pwr_released;
+    int64_t pwr_release_held_us;
 } medal_input_state_t;
 
 void medal_input_init(const medal_input_config_t *cfg);
 void medal_input_poll(medal_input_state_t *st);
+
+/* Start the coin-then-start sequence from somewhere other than a PWR press. Pac-Man has no
+ * fire button, so its coin has always been on BOOT; this lets that keep working while PWR does
+ * the same thing it does on every other medal. Ignored if a sequence is already running. */
+void medal_input_insert_coin(void);
 
 /* Ask for the zero to be taken again. Returns false if the medal is not being held up, in
  * which case the old zero is kept and the next poll tries again. */

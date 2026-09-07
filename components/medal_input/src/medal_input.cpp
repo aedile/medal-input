@@ -70,6 +70,14 @@ bool medal_input_recentre(void)
     return true;
 }
 
+void medal_input_insert_coin(void)
+{
+    if (coin_seq != 0) return;
+    coin_seq = 1;
+    coin_seq_start = esp_timer_get_time();
+    medal_input_recentre();
+}
+
 bool medal_input_have_neutral(void) { return have_neutral; }
 bool medal_input_imu_ok(void) { return imu_ok; }
 
@@ -158,10 +166,11 @@ void medal_input_poll(medal_input_state_t *st)
     mute_gesture(boot, now);
 
     if (pwr && !pwr_was_down) pwr_down_since = now;
+    if (!pwr && pwr_was_down) { st->pwr_released = true; st->pwr_release_held_us = now - pwr_down_since; }
     st->pwr_held_us = pwr ? now - pwr_down_since : 0;
     if (pwr && now - pwr_down_since >= (int64_t)cfg.power_off_hold_us) medal_input_power_off();
     /* a short press is a coin; anything longer was on its way to being a power off */
-    if (!pwr && pwr_was_down && now - pwr_down_since < 400000 && coin_seq == 0) {
+    if (!cfg.manual_pwr && st->pwr_released && st->pwr_release_held_us < 400000 && coin_seq == 0) {
         coin_seq = 1; coin_seq_start = now;
         medal_input_recentre();               /* a coin re-centres however you are holding it */
     }
